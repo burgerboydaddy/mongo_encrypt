@@ -1,6 +1,48 @@
 const { MongoClient, Binary, ClientEncryption } = require('mongodb');
 require('dotenv').config();
 
+// Get encryption configuration
+function getEncryptionConfig() {
+  return {
+    useAutoEncryption: process.env.USE_AUTO_ENCRYPTION !== 'false', // Default to true
+    database: process.env.MONGODB_DATABASE || 'myDb',
+    encryptedFields: ['field_1', 'field_2', 'field_3']
+  };
+}
+
+// Build JSON schema for automatic field encryption
+function getEncryptionSchema() {
+  const encryptionConfig = getEncryptionConfig();
+  
+  if (!encryptionConfig.useAutoEncryption) {
+    return null; // No schema means manual encryption
+  }
+
+  return {
+    bson_type: 'object',
+    properties: {
+      field_1: {
+        encrypt: {
+          bson_type: 'string',
+          algorithm: 'AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic'
+        }
+      },
+      field_2: {
+        encrypt: {
+          bson_type: 'string',
+          algorithm: 'AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic'
+        }
+      },
+      field_3: {
+        encrypt: {
+          bson_type: 'string',
+          algorithm: 'AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic'
+        }
+      }
+    }
+  };
+}
+
 // Build MongoDB connection URI from environment variables
 function buildMongoDbUri() {
   const username = process.env.MONGODB_USERNAME || '';
@@ -26,11 +68,19 @@ function generateLocalMasterKey() {
 }
 
 // Auto encryption configuration
-function getAutoEncryptionOptions(keyVaultNamespace, kmsProviders, localMasterKey) {
+function getAutoEncryptionOptions(keyVaultNamespace, kmsProviders, useAutoEncryption = true) {
+  const encryptionConfig = getEncryptionConfig();
+  const database = encryptionConfig.database;
+  const schema = getEncryptionSchema();
+  
   return {
     keyVaultNamespace,
     kmsProviders,
-    bypassAutoEncryption: true, // We'll encrypt manually for explicit control
+    bypassAutoEncryption: !useAutoEncryption, // Enable or disable auto encryption
+    schemaMap: useAutoEncryption && schema ? {
+      [`${database}.source_data`]: schema,
+      [`${database}.encrypted_data`]: schema
+    } : {}
   };
 }
 
@@ -129,14 +179,22 @@ async function createDataEncryptionKey(client) {
   return dataKeyId;
 }
 
+// Create regular MongoClient for manual encryption mode
+async function createRegularClient() {
+  const uri = buildMongoDbUri();
+  const client = new MongoClient(uri);
+  await client.connect();
+  return client;
+}
+
 // Create encrypted MongoClient
-async function createEncryptedClient() {
+async function createEncryptedClient(useAutoEncryption = true) {
   const uri = buildMongoDbUri();
   const keyVaultNamespace = 'encryption.__keyVault';
   const kmsProviders = getKmsProviders();
 
   const client = new MongoClient(uri, {
-    autoEncryption: getAutoEncryptionOptions(keyVaultNamespace, kmsProviders)
+    autoEncryption: getAutoEncryptionOptions(keyVaultNamespace, kmsProviders, useAutoEncryption)
   });
 
   await client.connect();
@@ -156,8 +214,11 @@ async function getClientEncryption(client) {
 
 module.exports = {
   buildMongoDbUri,
+  createRegularClient,
   createEncryptedClient,
   createDataEncryptionKey,
   getClientEncryption,
-  getKmsProviders
+  getKmsProviders,
+  getEncryptionConfig,
+  getEncryptionSchema
 };
