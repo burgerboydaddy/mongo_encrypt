@@ -1,0 +1,18 @@
+{
+  "name": "mongo-encrypt",
+  "version": "1.0.0",
+  "description": "MongoDB Enterprise field-level encryption example",
+  "main": "index.js",
+  "scripts": {
+    "encrypt": "node src/encryptData.js",
+    "decrypt": "node src/decryptData.js"
+  },
+  "keywords": ["mongodb", "encryption", "csfle"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "dotenv": "^16.3.1",
+    "mongodb-client-encryption": "^6.0.0"
+  }
+}
