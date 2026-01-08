@@ -9,6 +9,8 @@ Node.js project demonstrating MongoDB Enterprise native field-level encryption (
 - Encrypts specific fields using MongoDB's native encryption
 - Stores both original and encrypted values in `encrypted_data` collection
 - Decrypts and displays encrypted field values
+- **Automatic Encryption/Decryption**: Transparent field-level encryption at the driver level
+- **Manual Encryption/Decryption**: Explicit control over encryption and decryption
 
 ## Prerequisites
 
@@ -38,6 +40,7 @@ MONGODB_HOST=localhost
 MONGODB_PORT=27017
 MONGODB_DATABASE=myDb
 USE_IAM_AUTH=false
+USE_AUTO_ENCRYPTION=false
 DEPLOYMENT_ENV=local
 ```
 
@@ -79,6 +82,38 @@ AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGION=us-east-1
 AWS_KMS_KEY_ARN=arn:aws:kms:us-east-1:123456789:key/your-key-id
+```
+
+## Encryption Modes
+
+### Manual Encryption (USE_AUTO_ENCRYPTION=false) - Default
+
+Default mode with explicit control:
+- Manually encrypt individual fields before inserting into database
+- Manually decrypt fields when reading from database
+- More control, requires manual handling of each field
+- Useful for partial encryption scenarios
+- No additional dependencies required
+
+### Automatic Encryption (USE_AUTO_ENCRYPTION=true) - Recommended
+
+Recommended for production:
+- Encryption/decryption happens transparently at the driver level
+- Specify which fields to encrypt in the schema configuration
+- Application code doesn't need to handle encryption/decryption
+- All fields defined in schema are automatically encrypted on insert and decrypted on read
+- Requires `mongocryptd` daemon running (local automatic encryption helper)
+
+**Starting mongocryptd:**
+```bash
+# On macOS with Homebrew
+brew tap mongodb/brew
+brew install mongocryptd
+mongocryptd
+
+# On Linux - download from MongoDB Enterprise distribution
+# Then run:
+mongocryptd
 ```
 
 ## Usage
